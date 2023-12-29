@@ -1,8 +1,15 @@
-
 # flightportal
 
 ## credit to https://github.com/smartbutnot/
-I have updated to work on Adafruit MatrixPortal S3
+
+### Additions
+- I have updated to work on Adafruit MatrixPortal S3
+- Added home airport variable 
+- New animations for take off and landing based on home airport
+
+### To do:
+- Add Airline logos
+- Add runways for take off and landing
 
 Project for displaying the details of planes overhead on an Adafruit MatrixPortal S3 and LED matrix
 
