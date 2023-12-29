@@ -387,12 +387,6 @@ def checkConnection():
         print(f"Failed to connect to WiFi: {e}")
         return False
 
-# Look for flights overhead
-#def setup_wifi_and_requests():
-#    pool = socketpool.SocketPool(wifi.radio)
-#    requests = adafruit_requests.Session(pool, ssl.create_default_context())
-#    return requests
-
 def get_flights(requests_session, FLIGHT_SEARCH_URL, rheaders):
     print("Starting get_flights function")
     print(f"Flight Search URL: {FLIGHT_SEARCH_URL}")
@@ -423,8 +417,6 @@ rheaders = {
 
 # Call get_flights with the initialized requests session
 get_flights(requests_session, FLIGHT_SEARCH_URL, rheaders)
-
-
 
 # Actual doing of things - loop forever quering fr24, processing any results and waiting to query again
 
