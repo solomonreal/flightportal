@@ -44,6 +44,8 @@ except ImportError:
 QUERY_DELAY=30
 #Area to search for flights, see secrets file
 BOUNDS_BOX=secrets["bounds_box"]
+# Define your home airport code
+HOME_AIRPORT=secrets["home_airport"]
 
 wifi.radio.connect(os.getenv("CIRCUITPY_WIFI_SSID"), os.getenv("CIRCUITPY_WIFI_PASSWORD"))
 print(f"Connected to {os.getenv('CIRCUITPY_WIFI_SSID')}")
@@ -115,6 +117,36 @@ planeBmp[6,9]=planeBmp[6,8]=planeBmp[5,8]=planeBmp[4,7]=planeBmp[5,7]=planeBmp[6
 planeTg= displayio.TileGrid(planeBmp, pixel_shader=planePalette)
 planeG=displayio.Group(x=matrixportal.display.width+12,y=10)
 planeG.append(planeTg)
+
+# Create "taking off" animation
+taking_off_bmp = displayio.Bitmap(12, 12, 2)
+taking_off_palette = displayio.Palette(2)
+taking_off_palette[1] = PLANE_COLOUR
+taking_off_palette[0] = 0x000000
+taking_off_bmp[6, 11] = taking_off_bmp[6, 10] = taking_off_bmp[5, 10] = taking_off_bmp[4, 9] = taking_off_bmp[5, 9] = taking_off_bmp[6, 9] = 1
+taking_off_bmp[9, 8] = taking_off_bmp[5, 8] = taking_off_bmp[4, 8] = taking_off_bmp[3, 8] = 1
+taking_off_bmp[1, 7] = taking_off_bmp[2, 7] = taking_off_bmp[3, 7] = taking_off_bmp[4, 7] = taking_off_bmp[5, 7] = taking_off_bmp[6, 7] = taking_off_bmp[7, 7] = taking_off_bmp[8, 7] = taking_off_bmp[9, 7] = 1
+taking_off_bmp[1, 6] = taking_off_bmp[2, 6] = taking_off_bmp[3, 6] = taking_off_bmp[4, 6] = taking_off_bmp[5, 6] = taking_off_bmp[6, 6] = taking_off_bmp[7, 6] = taking_off_bmp[8, 6] = taking_off_bmp[9, 6] = 1
+taking_off_bmp[9, 5] = taking_off_bmp[5, 5] = taking_off_bmp[4, 5] = taking_off_bmp[3, 5] = 1
+taking_off_bmp[6, 2] = taking_off_bmp[6, 1] = taking_off_bmp[5, 1] = taking_off_bmp[4, 0] = taking_off_bmp[5, 0] = taking_off_bmp[6, 0] = 1
+taking_off_tg = displayio.TileGrid(taking_off_bmp, pixel_shader=taking_off_palette)
+taking_off_g = displayio.Group(x=matrixportal.display.width + 12, y=10)
+taking_off_g.append(taking_off_tg)
+
+# Create "landing" animation
+landing_bmp = displayio.Bitmap(12, 12, 2)
+landing_palette = displayio.Palette(2)
+landing_palette[1] = PLANE_COLOUR
+landing_palette[0] = 0x000000
+landing_bmp[6, 0] = landing_bmp[6, 1] = landing_bmp[5, 1] = landing_bmp[4, 2] = landing_bmp[5, 2] = landing_bmp[6, 2] = 1
+landing_bmp[9, 3] = landing_bmp[5, 3] = landing_bmp[4, 3] = landing_bmp[3, 3] = 1
+landing_bmp[1, 4] = landing_bmp[2, 4] = landing_bmp[3, 4] = landing_bmp[4, 4] = landing_bmp[5, 4] = landing_bmp[6, 4] = landing_bmp[7, 4] = landing_bmp[8, 4] = landing_bmp[9, 4] = 1
+landing_bmp[1, 5] = landing_bmp[2, 5] = landing_bmp[3, 5] = landing_bmp[4, 5] = landing_bmp[5, 5] = landing_bmp[6, 5] = landing_bmp[7, 5] = landing_bmp[8, 5] = landing_bmp[9, 5] = 1
+landing_bmp[9, 6] = landing_bmp[5, 6] = landing_bmp[4, 6] = landing_bmp[3, 6] = 1
+landing_bmp[6, 9] = landing_bmp[6, 8] = landing_bmp[5, 8] = landing_bmp[4, 7] = landing_bmp[5, 7] = landing_bmp[6, 7] = 1
+landing_tg = displayio.TileGrid(landing_bmp, pixel_shader=landing_palette)
+landing_g = displayio.Group(x=matrixportal.display.width + 12, y=matrixportal.display.height - 12)
+landing_g.append(landing_tg)
 
 # We can fit three rows of text on a panel, so one label for each. We'll change their text as needed
 label1 = adafruit_display_text.label.Label(
@@ -433,6 +465,7 @@ while True:
     flight_id = get_flights(requests_session, FLIGHT_SEARCH_URL, rheaders)
     w.feed()
 
+
     if flight_id:
         if flight_id == last_flight:
             print("Same flight found, so keep showing it")
@@ -446,6 +479,14 @@ while True:
                     gc.collect()
                     plane_animation()
                     display_flight()
+                    # Check if the flight's departure airport matches your HOME_AIRPORT
+                    if airport_origin_code == HOME_AIRPORT:
+                        # Do something when the flight departs from your home airport
+                        taking_off_g.append(taking_off_tg)
+                    # Check if the flight's destination airport matches your HOME_AIRPORT
+                    elif airport_destination_code == HOME_AIRPORT:
+                        # Do something when the flight lands at your home airport
+                        landing_g.append(landing_tg)
                 else:
                     print("error parsing JSON, skip displaying this flight")
             else:
