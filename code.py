@@ -465,15 +465,17 @@ get_flights(requests_session, FLIGHT_SEARCH_URL, rheaders)
 # Actual doing of things - loop forever quering fr24, processing any results and waiting to query again
 checkConnection()
 
-last_flight = ''
-
+last_flight=''
 while True:
-    print("Get flights...")
-    flight_data = get_flights(requests_session, FLIGHT_SEARCH_URL, rheaders)
     w.feed()
 
-    if flight_data:
-        flight_id, origin, destination = flight_data  # Unpack the flight data
+    print("memory free: " + str(gc.mem_free()))
+
+    print("Get flights...")
+    flight_id, origin, destination = get_flights(requests_session, FLIGHT_SEARCH_URL, rheaders)
+    w.feed()
+
+    if flight_id:
         if flight_id == last_flight:
             print("Same flight found, so keep showing it")
         else:
@@ -484,7 +486,7 @@ while True:
                 gc.collect()
                 if parse_details_json():
                     gc.collect()
-                    origin, destination = get_origin_and_destination()  # Assuming you have a function to get origin and destination.
+                    # Check if the flight is taking off or landing at HOME_AIRPORT
                     if origin == HOME_AIRPORT:
                         # Flight is taking off from HOME_AIRPORT
                         plane_animation_take_off()
@@ -494,21 +496,21 @@ while True:
                     else:
                         # Neither taking off nor landing at HOME_AIRPORT
                         plane_animation()
+
                     display_flight()
                 else:
                     print("error parsing JSON, skip displaying this flight")
             else:
                 print("error loading details, skip displaying this flight")
-
+            
             last_flight = flight_id
     else:
-        # Handle the case where get_flights returns None
         print("No flights found, clear display")
         clear_flight()
-
+    
     time.sleep(5)
 
     for i in range(0, QUERY_DELAY, +5):
-        time.sleep(5)
+        time.sleep(1)
         w.feed()
     gc.collect()
