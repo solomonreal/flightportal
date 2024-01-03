@@ -9,7 +9,6 @@
 
 ### To do:
 - Add Airline logos
-- Add runways for take off and landing
 
 Project for displaying the details of planes overhead on an Adafruit MatrixPortal S3 and LED matrix
 
