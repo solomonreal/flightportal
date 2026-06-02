@@ -10,6 +10,10 @@ import wifi, socketpool, ssl, adafruit_requests
 w.timeout = 60
 w.mode = WatchDogMode.RESET
 
+def wfeed():
+    try: w.feed()
+    except: pass
+
 FONT = terminalio.FONT
 
 try:
@@ -93,13 +97,13 @@ def connect_wifi():
     for attempt in range(5):
         try:
             print("WiFi connect attempt "+str(attempt+1)+"...")
-            w.feed()
+            wfeed()
             wifi.radio.connect(ssid, pwd)
             print("Connected to "+ssid)
             return True
         except Exception as e:
             print("WiFi failed: "+str(e))
-            w.feed()
+            wfeed()
             time.sleep(3)
     return False
 
@@ -1370,7 +1374,7 @@ WEATHER_CODES = {
     61:'Light Rain',63:'Rain',65:'Heavy Rain',
     71:'Light Snow',73:'Snow',75:'Heavy Snow',
     80:'Showers',81:'Showers',82:'Heavy Showers',
-    95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm',
+    95:'Thunder',96:'Thunder',99:'Thunder',
 }
 
 COMP_NAMES = {
@@ -1590,6 +1594,13 @@ def make_plane_bmp(airline=''):
     # Windows
     for wx in [20,22,24,26,28,30,32,34,36]:
         p(wx,9,3)
+    # Swiss cross on tail fin
+    if airline in ('SWR','OAW'):
+        pal[3] = 0xFFFFFF
+        # Vertical bar of cross
+        p(2,2,3); p(2,3,3); p(2,4,3); p(2,5,3)
+        # Horizontal bar of cross
+        p(1,3,3); p(2,3,3); p(3,3,3)
     return bmp,pal
 
 
@@ -1639,6 +1650,11 @@ def make_landing_bmp(airline=''):
     # Windows
     for wx in [3,5,7,9,11,13,15,17,19]:
         p(wx,9,3)
+    # Swiss cross on tail fin (mirrored, tail is on right at x=35-39)
+    if airline in ('SWR','OAW'):
+        pal[3] = 0xFFFFFF
+        p(37,2,3); p(37,3,3); p(37,4,3); p(37,5,3)
+        p(36,3,3); p(37,3,3); p(38,3,3)
     return bmp,pal
 
 
@@ -1664,7 +1680,7 @@ def plane_animation():
     matrixportal.display.show(pg)
     tg.y = matrixportal.display.height//2 - 6
     for i in range(-40, matrixportal.display.width+40):
-        tg.x=i; w.feed(); time.sleep(_plane_speed_delay)
+        tg.x=i; wfeed(); time.sleep(_plane_speed_delay)
     matrixportal.display.show(g)
     gc.collect()
 
@@ -1718,7 +1734,7 @@ def plane_animation_take_off():
     for i in range(steps):
         ptg.x=-40+i
         ptg.y=8-(i*10//steps)
-        w.feed(); time.sleep(_plane_speed_delay)
+        wfeed(); time.sleep(_plane_speed_delay)
         if ptg.x>matrixportal.display.width or ptg.y<-20: break
     matrixportal.display.show(g)
     gc.collect()
@@ -1740,7 +1756,7 @@ def plane_animation_landing():
         ltg.x = matrixportal.display.width - i
         # y descends from -16 (above screen) to 12 (runway level)
         ltg.y = -16 + (i * 28 // steps)
-        w.feed(); time.sleep(_plane_speed_delay)
+        wfeed(); time.sleep(_plane_speed_delay)
         if ltg.x < -40 or ltg.y > 14: break
     matrixportal.display.show(g)
     gc.collect()
@@ -1765,13 +1781,13 @@ def flap_in(label, target):
     mx = max(steps) if steps else 0
     for step in range(mx+1):
         label.text = ''.join(FLAP_CHARS[min(step,s)] for s in steps)
-        w.feed(); time.sleep(FLAP_SPEED)
+        wfeed(); time.sleep(FLAP_SPEED)
     label.text = target
 
 def scroll(line, restore_x):
     line.x = matrixportal.display.width
     for i in range(matrixportal.display.width+1, 0-line.bounding_box[2], -1):
-        line.x=i; w.feed(); time.sleep(TEXT_SPEED)
+        line.x=i; wfeed(); time.sleep(TEXT_SPEED)
     line.x = restore_x
 
 def flap_all(t1, t2, t3):
@@ -1785,7 +1801,7 @@ def flap_all(t1, t2, t3):
         label1.text = ''.join(FLAP_CHARS[min(step,s)] for s in s1)
         label2.text = ''.join(FLAP_CHARS[min(step,s)] for s in s2)
         label3.text = ''.join(FLAP_CHARS[min(step,s)] for s in s3)
-        w.feed(); time.sleep(FLAP_SPEED)
+        wfeed(); time.sleep(FLAP_SPEED)
     label1.text=t1; label2.text=t2; label3.text=t3
 
 def display_flight():
@@ -1825,26 +1841,23 @@ def set_labels_from_feed(flight_info):
     label2.color = ROW_TWO_COLOUR
     label3.color = ROW_THREE_COLOUR
 
-    # Enrich from ADS-B for missing info
+    # Enrich only what's actually missing - each API call costs ~1-2s
     hex_code = flight_info[0] if flight_info else ""
     adsb = {}
-    if hex_code and (not origin or not destination or airline_icao not in AIRLINE_INFO):
+    needs_enrichment = hex_code and (not origin or not destination or not callsign)
+    needs_operator   = hex_code and airline_icao not in AIRLINE_INFO
+
+    if needs_enrichment:
+        # adsb.lol - best single source, gets route + operator
         adsb = enrich_from_adsb(hex_code, requests_session)
         gc.collect()
-        # OpenSky for callsign/country if still missing
-        if not callsign or airline_icao not in AIRLINE_INFO:
-            os_call, os_country = lookup_opensky(hex_code, requests_session)
-            if os_call and not callsign:
-                callsign = os_call.strip()
-            gc.collect()
-        # Planespotters for private jets / unknown operators
-        if airline_icao not in AIRLINE_INFO and not adsb.get("operator"):
-            ps_op, ps_reg, ps_iata = lookup_planespotters(hex_code, requests_session)
-            if ps_op:
-                airline_name = ps_op[:12]
-            if ps_reg and not callsign:
-                callsign = ps_reg
-            gc.collect()
+
+    if needs_operator and not adsb.get("operator"):
+        # Only hit planespotters if airline truly unknown (private jets etc)
+        ps_op, ps_reg, _ = lookup_planespotters(hex_code, requests_session)
+        if ps_op: adsb["operator"] = ps_op
+        if ps_reg and not callsign: callsign = ps_reg
+        gc.collect()
 
     # Fill gaps from ADS-B data
     if not origin and adsb.get("origin"):      origin      = adsb["origin"]
@@ -1858,8 +1871,7 @@ def set_labels_from_feed(flight_info):
     elif adsb.get("operator"):
         airline_name = adsb["operator"][:12]
     else:
-        op, _ = lookup_airline_hex(hex_code, requests_session) if hex_code else ("","")
-        airline_name = op if op else airline_icao
+        airline_name = airline_icao
     orig_name,_  = AIRPORT_INFO.get(origin,(origin,''))
     dest_name,_  = AIRPORT_INFO.get(destination,(destination,''))
     aircraft_full= AIRCRAFT_NAMES.get(aircraft, aircraft)
@@ -1932,7 +1944,7 @@ def show_weather():
             wg.append(wl1); wg.append(wl2); wg.append(wl3)
             matrixportal.display.show(wg)
             print("Weather: "+str(temp)+"C "+cond)
-            for _ in range(20): w.feed(); time.sleep(0.5)
+            for _ in range(20): wfeed(); time.sleep(0.5)
             matrixportal.display.show(g)
     except Exception as e:
         print("Weather error:", e)
@@ -2040,7 +2052,7 @@ def fetch_live_matches():
                 rnd  = m["stage"]
                 if should_show_match(home, away, comp, rnd):
                     matches.append(m)
-        w.feed()
+        wfeed()
     except Exception as e:
         print(f"Sofascore: {e}")
 
@@ -2058,7 +2070,7 @@ def fetch_live_matches():
                         rnd  = m.get("stage","")
                         if should_show_match(home, away, comp_name, rnd):
                             matches.append(m)
-                w.feed()
+                wfeed()
             except Exception as e:
                 print(f"FD {comp}: {e}")
     return matches
@@ -2106,7 +2118,7 @@ def display_score(goal):
     scorer_text = label3.text
     for i in range(16):
         label3.text = scorer_text if i%2==0 else ""
-        w.feed(); time.sleep(0.5)
+        wfeed(); time.sleep(0.5)
     label1.color=ROW_ONE_COLOUR; label2.color=ROW_TWO_COLOUR; label3.color=ROW_THREE_COLOUR
     gc.collect()
 
@@ -2123,7 +2135,7 @@ def show_live_scores(matches):
         label1.color=0xFFCC00; label1.text=comp; label1.x=1
         label2.color=0xFFFFFF; label2.text=short_name(home)+str(hs)+"-"+str(aws)+short_name(away); label2.x=1
         label3.color=0xAAAAAA; label3.text=minute+"'" if minute else "Live"; label3.x=1
-        for _ in range(6): w.feed(); time.sleep(0.5)
+        for _ in range(6): wfeed(); time.sleep(0.5)
     label1.color=ROW_ONE_COLOUR; label2.color=ROW_TWO_COLOUR; label3.color=ROW_THREE_COLOUR
     clear_flight()
 
@@ -2178,7 +2190,7 @@ def get_match_scorecard():
 
 def cricket_hold(secs=6):
     for _ in range(secs*2):
-        w.feed(); time.sleep(0.5)
+        wfeed(); time.sleep(0.5)
 
 def show_cricket_screen(l1c,l1t, l2c,l2t, l3c,l3t, secs=5):
     matrixportal.display.show(g)
@@ -2191,7 +2203,7 @@ def scroll_cricket_text(text, colour, label):
     label.color = colour; label.text = text
     label.x = matrixportal.display.width
     for i in range(matrixportal.display.width+1, 0-label.bounding_box[2], -1):
-        label.x=i; w.feed(); time.sleep(TEXT_SPEED)
+        label.x=i; wfeed(); time.sleep(TEXT_SPEED)
     label.x=1
 
 def parse_innings(summary):
@@ -2248,8 +2260,8 @@ def display_cricket_wicket(summary, scorecard, prev_wkts):
         label1.color=0xFF0000; label1.text="WICKET!"; label1.x=1
         label2.color=0xFFFFFF; label2.text=f"{team} {wkts}/{runs}"
         label3.color=0xAAAAAA; label3.text=f"Ov {overs}"
-        w.feed(); time.sleep(0.35)
-        label1.text=""; w.feed(); time.sleep(0.25)
+        wfeed(); time.sleep(0.35)
+        label1.text=""; wfeed(); time.sleep(0.25)
     label1.text="WICKET!"
     cricket_hold(3)
 
@@ -2451,7 +2463,7 @@ SPORTS_EVERY=2
 
 while True:
     checkConnection()
-    w.feed()
+    wfeed()
     print("memory free: "+str(gc.mem_free()))
 
     sports_cycle+=1
@@ -2462,7 +2474,7 @@ while True:
                 live=fetch_live_matches()
                 check_for_goals(live)
                 while _goal_queue:
-                    display_score(_goal_queue.pop(0)); w.feed()
+                    display_score(_goal_queue.pop(0)); wfeed()
                 if live: show_live_scores(live)
             except Exception as e:
                 print("Sports error:", e)
@@ -2472,7 +2484,7 @@ while True:
             except Exception as e:
                 print("Cricket error:", e)
 
-    w.feed()
+    wfeed()
     if ENABLE_FLIGHTS:
         flights,raw = get_flights(FLIGHT_URL, rheaders)
         if flights:
@@ -2494,5 +2506,5 @@ while True:
 
     time.sleep(5)
     for _ in range(0,QUERY_DELAY,5):
-        time.sleep(5); w.feed()
+        time.sleep(5); wfeed()
     gc.collect()
