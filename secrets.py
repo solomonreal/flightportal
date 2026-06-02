@@ -1,11 +1,13 @@
-# This file is where you keep secret settings, passwords, and tokens!
-# If you put them in the code you risk committing that info or sharing it
-
 secrets = {
-    'ssid' : 'wifi network',
-    'password' : 'wifi password',
-    # area to search for flights: top latitude, bottom latitude, left longitude, right longitude
-    # (so this example is central London)
-    'bounds_box' : '51.6,51.4,-0.3,-0.1',
-    'home_airport' : 'ZRH'
-    }
+    'ssid':           'your wifi',
+    'password':       'your_password',
+    'bounds_box':     'youer thing',
+    'home_airport':   'ZRH',
+    'football_key':   '',
+
+    # Feature flags - set to False to disable
+    'enable_flights':  True,
+    'enable_weather':  True,
+    'enable_football': True,
+    'enable_cricket':  True,
+}

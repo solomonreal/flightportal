@@ -5,5 +5,15 @@
 # This is where you store the credentials necessary for your code.
 # The associated demo only requires WiFi, but you can include any
 # credentials here, such as Adafruit IO username and key, etc.
-CIRCUITPY_WIFI_SSID = "sdgsdgsgsdgsdfsd"
-CIRCUITPY_WIFI_PASSWORD = "sdfsdfsdfsd"
+CIRCUITPY_WIFI_SSID = "Salt_2GHz_0EC683_2.4GHz"
+CIRCUITPY_WIFI_PASSWORD = "Chewbacca1"
+
+
+# Your New York Time API Key
+NYT_API_KEY = "kozwQ43ca2HPsrVa6NqpQmLgpmC3Ku6D"
+
+# To enable modifying files from the web. Change this too!
+# Leave the User field blank in the browser.
+CIRCUITPY_WEB_API_PASSWORD="passw0rd"
+
+CIRCUITPY_WEB_API_PORT=80
