@@ -1,61 +1,121 @@
-# flightportal
+# FlightPortal
 
-## credit to https://github.com/smartbutnot/
+A live flight, weather, football and cricket tracker for a 64×32 RGB LED matrix, built on the Adafruit MatrixPortal S3.
 
-### Additions
-- I have updated to work on Adafruit MatrixPortal S3
-- Added home airport variable 
-- New animations for take off and landing based on home airport
+> Credit to [smartbutnot](https://github.com/smartbutnot/) for the original project this is based on.
 
-### To do:
-- Add Airline logos
+![FlightPortal](https://user-images.githubusercontent.com/103124527/208709167-dd4b6ff2-4c80-4e38-840f-e5b958e2ed78.jpg)
 
-Project for displaying the details of planes overhead on an Adafruit MatrixPortal S3 and LED matrix
+---
 
-(video sped up to make the file fit, the speeds and delays are configurable anyway)
+## What it does
 
-https://user-images.githubusercontent.com/103124527/206902629-1f31bd41-d8a8-415e-a35a-625efb20b3d6.MOV
+### Flights
+Polls FlightRadar24 every 30 seconds for aircraft overhead. When a flight is detected it plays a plane animation — takeoff climbs lower-left to upper-right, landing descends upper-right to lower-left nose-first, overflying aircraft cross left to right. The plane graphic is 40×20px with two-tone livery colours per airline (Swiss Air gets a white cross on the tail). Speed in knots is shown during the animation, followed by a flap-in animation and scrolling text showing callsign, route and aircraft type.
 
-Uses an Adafruit MatrixPortal and a 64x32 LED/RGB Matrix (P4), and some fairly hacked-together FlightRadar24 API-style scraping to display the details of flights passing overhead. That code being unoffical, it may break at any time!
+Missing flight data is enriched automatically via adsb.lol, OpenSky, hexdb.io and planespotters.net (good for private jets and charter operators). The static lookup covers 1,235 airports and 40+ airlines.
 
-To make one you will need:
+### Weather
+Shown between flights. Displays temperature in a colour that shifts from blue (freezing) through cyan, green and yellow to red (hot), alongside condition text and wind speed. Shows sunrise time before midday and sunset time after.
 
-1. Adafruit MatrixPortal S3 (https://learn.adafruit.com/adafruit-matrixportal-s3)
-2. A P4, 64x32 RGB matrix panel (I get mine from Aliexpress)
-3. The case I designed (https://www.thingiverse.com/thing:5701517)
-4. An adafruit acrylic diffuser (https://www.adafruit.com/product/4749) - available various places
-5. 6 M3 screws (sorry, said M5 before but was looking at the wrong ones, my bad. Think mine are 8mm long, little bit more would be OK, shorter probably a problem)
-6. Optional: Uglu dashes to stick the diffuser on, the case holds mine on pretty well though (https://www.protapes.com/products/uglu-600-dashes-sheets)
+### Football
+Sofascore is used as the primary source (no API key needed), with football-data.org as a fallback. Matches are filtered so only relevant games appear:
 
-Prep the portal as detailed here (https://learn.adafruit.com/adafruit-matrixportal-s3/prep-the-matrixportal), put the code and secrets files on, put your wifi details and the geo box you want to search in the secrets file, and you should be good to go!
+- **Always:** Premier League, Champions League, Europa League, Conference League, World Cup, Euros, Nations League, FA Cup, EFL Cup, any West Ham, England or FC Aarau game
+- **Semi-finals and finals only:** Serie A, La Liga, Ligue 1, Bundesliga, Swiss Super League
 
-If you'd like to change the layout, colours or the flight info displayed, all that is pretty configurable, have a look at code.py. Hopefully the comments are fairly self explanatory if you're happy hacking around with python.
+Goal alerts show the scorer's name flashing on screen. Live scores are shown during the sports cycle.
 
-The libaries it needs are I think all part of the recommended prep above, but for info they are:
+### Cricket
+Uses the ESPN Cricinfo unofficial API — no key needed. Automatically discovers live England matches and reports:
+- Wickets with dismissal details (bowler, fielder, runs scored)
+- End of innings with top 3 batting and bowling figures
+- Match result
 
-- neopixel.mpy
-- adafruit_ticks.mpy
-- adafruit_requests.mpy
-- adafruit_minimqtt
-- adafruit_portalbase
-- adafruit_matrixportal
-- adafruit_json_stream.mpy
-- adafruit_io
-- adafruit_fakerequests.mpy
-- adafruit_esp32spi
-- adafruit_display_text
-- adafruit_datetime.mpy
-- adafruit_bitmap_font
+---
 
-For power, the easiest thing is to use the cable that came with your matrix panel, as long as it has two prongs that go to the screws on the matrixportal. All that's needed is for the portal to connect to the power port on the panel - we're not using much power here (I clock it at about 2w). Any decent usb power supply connected to the portal should do it.
+## Hardware
 
-![IMG-2179](https://user-images.githubusercontent.com/103124527/208709167-dd4b6ff2-4c80-4e38-840f-e5b958e2ed78.jpg)
+1. [Adafruit MatrixPortal S3](https://learn.adafruit.com/adafruit-matrixportal-s3)
+2. P4 64×32 RGB matrix panel (available on AliExpress)
+3. [Case (Thingiverse)](https://www.thingiverse.com/thing:5701517)
+4. [Adafruit acrylic diffuser](https://www.adafruit.com/product/4749)
+5. 6× M3 screws (~8mm)
+6. Optional: [Uglu dashes](https://www.protapes.com/products/uglu-600-dashes-sheets) to secure the diffuser
 
-I soldered a connection straight onto the panel's power port as below, for neatness, but that's completely optional. 
+---
 
-![IMG_2125](https://user-images.githubusercontent.com/103124527/206903066-7af5c076-101e-4598-b3ba-0f64766e4162.jpg)
-![IMG_2126_small](https://user-images.githubusercontent.com/103124527/206903084-42378ce0-b8d8-4810-a18a-f35b9a509752.jpg)
-![IMG_2127_small](https://user-images.githubusercontent.com/103124527/206903089-16d0f7f7-2dc0-4082-a012-0e1c9999a63a.jpg)
-![IMG_2128_small](https://user-images.githubusercontent.com/103124527/206903092-0a131b80-cd20-4c8c-b892-9b0a5c1d544b.jpg)
+## Setup
 
-For debugging, use putty or similar, see what COM port the portal is on (device manager in windows will show you), and run a serial connection to that port at 115200. It should print out helpful messages about errors, flights it sees, etc. You can also paste the URLs you see in the code into a browser and check you can find flights, etc.
+Prep the MatrixPortal following [Adafruit's guide](https://learn.adafruit.com/adafruit-matrixportal-s3/prep-the-matrixportal), then copy `code.py` and `secrets.py` to the device.
+
+### secrets.py
+
+```python
+secrets = {
+    'ssid':            'your_wifi_ssid',
+    'password':        'your_wifi_password',
+    'bounds_box':      '',  # N,S,W,E
+    'home_airport':    'ZRH',
+    'football_key':    'optional_football_data_key',  # fallback only
+
+    # Feature flags
+    'enable_flights':  True,
+    'enable_weather':  True,
+    'enable_football': True,
+    'enable_cricket':  True,
+}
+```
+
+The `bounds_box` is `north,south,west,east` in decimal degrees. Adjust it to the area visible from your window. A box of roughly 0.1° latitude × 0.1° longitude works well for a city location.
+
+### Libraries
+
+All included in the standard MatrixPortal prep. For reference:
+
+```
+neopixel.mpy
+adafruit_requests.mpy
+adafruit_portalbase
+adafruit_matrixportal
+adafruit_display_text
+adafruit_bitmap_font
+adafruit_ticks.mpy
+adafruit_json_stream.mpy
+adafruit_datetime.mpy
+adafruit_minimqtt
+adafruit_io
+adafruit_fakerequests.mpy
+adafruit_esp32spi
+```
+
+### Power
+
+Use the cable supplied with the matrix panel. Connect it to the portal's power port on the panel — power draw is around 2W so any decent USB power supply will do. Optionally solder directly to the panel's power port for a neater build.
+
+![Wiring 1](https://user-images.githubusercontent.com/103124527/206903066-7af5c076-101e-4598-b3ba-0f64766e4162.jpg)
+![Wiring 2](https://user-images.githubusercontent.com/103124527/206903084-42378ce0-b8d8-4810-a18a-f35b9a509752.jpg)
+
+---
+
+## APIs used
+
+All free, no key required unless noted:
+
+| Source | Used for |
+|---|---|
+| FlightRadar24 feed | Live flight positions |
+| adsb.lol | Flight enrichment |
+| OpenSky | Callsign / country |
+| hexdb.io | Operator from hex code |
+| planespotters.net | Private jet operators |
+| Open-Meteo | Weather |
+| Sofascore | Live football scores |
+| football-data.org | Football fallback (optional key) |
+| ESPN Cricinfo | Cricket scores |
+
+---
+
+## Debugging
+
+Use PuTTY or a serial monitor. Find the COM port in Device Manager, connect at **115200 baud**. The code prints flight details, errors and API responses. You can also paste the feed URLs directly into a browser to check coverage for your area.
